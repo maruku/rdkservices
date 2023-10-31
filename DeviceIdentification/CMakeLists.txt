@@ -96,7 +96,7 @@ elseif (BUILD_AMLOGIC)
 elseif (BUILD_REALTEK)
     target_sources(${MODULE_NAME}
         PRIVATE
-            Implementation/Realtek/Realtek.cpp)
+            Implementation/Linux/Linux.cpp)
 elseif(UNIX AND NOT APPLE)
     target_sources(${MODULE_NAME}
         PRIVATE
