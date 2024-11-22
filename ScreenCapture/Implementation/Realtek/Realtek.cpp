@@ -24,6 +24,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
+#include <sys/ioctl.h>
 #include "kms.h"
 #include "Realtek.h"
 
@@ -147,6 +148,20 @@ bool DRMScreenCapture_GetScreenInfo(DRMScreenCapture* handle) {
 			ret = false;
 			break;
 		}
+
+		struct drm_prime_handle drm_prime;
+		int drmRet = 0;
+
+		drm_prime.handle = fb->handle;
+		drm_prime.flags = 0;
+		drmRet = ioctl(context->fd, DRM_IOCTL_PRIME_HANDLE_TO_FD, &drm_prime);
+		if(drmRet) {
+			cout << "[SCREENCAP] drmIoctl(DRM_IOCTL_PRIME_HANDLE_TO_FD) fail, ret=" << drmRet << endl;
+			ret = false;
+			break;
+		}
+		handle->dmabuf_fd = drm_prime.fd;
+		/*
 		map.handle = fb->handle;
 		int drmRet = drmIoctl(context->fd, DRM_IOCTL_MODE_MAP_DUMB, &map);
 		if(drmRet) {
@@ -156,6 +171,7 @@ bool DRMScreenCapture_GetScreenInfo(DRMScreenCapture* handle) {
 		}
 		context->offset = map.offset;
 		cout << "[SCREENCAP] offset : " << map.offset << endl;
+		*/
 	} while(false);
 
 	if(fb)
@@ -186,12 +202,12 @@ bool DRMScreenCapture_ScreenCapture(DRMScreenCapture* handle, uint8_t* output, u
 
 		// copy frame
 		void *vaddr = NULL;
-		vaddr =(void*) mmap(NULL, size, PROT_READ , MAP_SHARED, context->fd, context->offset) ;
-
+		//vaddr =(void*) mmap64(NULL, size, PROT_READ , MAP_SHARED, context->fd, context->offset) ;
+		vaddr =(void*) mmap64(NULL, size, PROT_READ , MAP_SHARED, handle->dmabuf_fd, 0);
         if (vaddr == MAP_FAILED) {
-        perror("mmap failed : ");
-        ret = false;
-        break;
+            cout << "[SCREENCAP] mmap failed" << endl;
+            ret = false;
+            break;
         }
 
 		memcpy(output,(unsigned char*)vaddr, size);
